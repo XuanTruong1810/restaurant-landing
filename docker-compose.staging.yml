@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  restaurant-landing-staging:
+    image: ${REGISTRY_URL}/restaurant-landing:${BUILD_NUMBER}
+    ports:
+      - "3001:80"
+    environment:
+      - NODE_ENV=staging
+      - API_URL=https://api-staging.bellavista.com
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.restaurant-staging.rule=Host(`staging.bellavista.com`)"
+      - "traefik.http.routers.restaurant-staging.tls=true"
+      - "traefik.http.routers.restaurant-staging.tls.certresolver=letsencrypt"
+
+networks:
+  default:
+    name: restaurant-staging-network

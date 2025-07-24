@@ -1,0 +1,58 @@
+version: "3.8"
+
+services:
+  restaurant-landing-prod:
+    image: ${REGISTRY_URL}/restaurant-landing:${BUILD_NUMBER}
+    ports:
+      - "3000:80"
+    environment:
+      - NODE_ENV=production
+      - API_URL=https://api.bellavista.com
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.restaurant-prod.rule=Host(`bellavista.com`)"
+      - "traefik.http.routers.restaurant-prod.tls=true"
+      - "traefik.http.routers.restaurant-prod.tls.certresolver=letsencrypt"
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+  # Production monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - "./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    restart: unless-stopped
+
+volumes:
+  grafana-storage:
+
+networks:
+  default:
+    name: restaurant-prod-network
